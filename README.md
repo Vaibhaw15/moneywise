@@ -1,3 +1,4 @@
+
 # 💰 Moneywise - Expense Management Spring Boot App
 
 Moneywise is a Spring Boot-based web application that helps users manage their income, expenses, and financial health. It includes secure authentication via JWT, RESTful APIs, and integration with PostgreSQL for data persistence.
