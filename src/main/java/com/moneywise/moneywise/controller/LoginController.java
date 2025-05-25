@@ -41,18 +41,13 @@ public class LoginController {
     @ResponseBody
     public ResponseEntity<Object> createUser(@RequestBody UserDTO user) {
         try {
-
-            return  ResponseEntity.ok(userService.createUser(user));
-
-        } catch (Exception e){
+            return new ResponseEntity<>(userService.createUser(user),HttpStatus.CREATED);
+        } catch (InvalidUserException e){
+              return new ResponseEntity<>(e.getLocalizedMessage(),HttpStatus.CONFLICT);
+        }catch (Exception e){
             return new ResponseEntity<>(e.getLocalizedMessage(),HttpStatus.BAD_REQUEST);
         }
     }
 
-
-
-    public String getUserName() {
-        return "userName";
-    }
     
 }
