@@ -23,7 +23,6 @@ Moneywise is a Spring Boot-based web application that helps users manage their i
 | Backend       | Spring Boot 3+, Spring Security |
 | Persistence   | JPA (Hibernate), PostgreSQL |
 | Authentication| JWT (JSON Web Tokens)   |
-| Logging       | SLF4J / Logback         |
 | Dev Tools     | Spring DevTools, Lombok |
 | Monitoring    | Spring Boot Actuator    |
 
