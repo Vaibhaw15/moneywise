@@ -28,5 +28,5 @@ Moneywise is a Spring Boot-based web application that helps users manage their i
 
 ---
 
-## ⚙️ Project Structure
+## ⚙️ Project Structure 
 
