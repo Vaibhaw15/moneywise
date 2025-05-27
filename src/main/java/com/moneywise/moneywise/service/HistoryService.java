@@ -1,6 +1,8 @@
 package com.moneywise.moneywise.service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,7 @@ import com.moneywise.moneywise.model.response.HistoryResponseDTO;
 import com.moneywise.moneywise.repository.CategoryRepository;
 import com.moneywise.moneywise.repository.CategoryTypeRepository;
 import com.moneywise.moneywise.repository.TransactionRepository;
+
 import com.moneywise.moneywise.entity.Category;
 import com.moneywise.moneywise.entity.CategoryType;
 
@@ -32,33 +35,51 @@ public class HistoryService {
     
         try {
             List<Transaction> txn = transactionRepository.getTransactionHistory(userId, date);
+            
+            
 
             if (txn == null || txn.isEmpty()) {
                 return "No transaction history found for userId: " + userId;
             }else{
-                return txn.stream().map(txnOne -> {
 
-                Integer categoryTypeId = txnOne.getTransactionCategoryId();
+                //List<Integer> categoryIds = txn.stream().map(Transaction::getTransactionCategoryId).toList();
+
+                //List<Category> categories = categoryRepository.findByCategoryTypeIdIn(categoryIds);
+
+                Map<Integer,Category> categoryIdNameMap = categoryRepository.findAll()
+                .stream().collect(Collectors.toMap(Category::getId, Function.identity()));
+                
+
+                // List<Integer> categoryTypeIds = categories.stream().map(Category::getCategoryTypeId).toList();
+
+                Map<Integer,String> categoryTypeIdNameMap =  categoryTypeRepository.findAll()
+                .stream().collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
+
+                 return txn.stream().map(txnOne -> {
+
+                // Integer categoryTypeId = txnOne.getTransactionCategoryId();
                  
-                Category category = categoryRepository.findByCategoryTypeId(categoryTypeId);
+                // Category category = categoryRepository.findByCategoryTypeId(categoryTypeId);
 
-                CategoryType categoryType = categoryTypeRepository.findByCategoryTypeId(category.getCategoryTypeId());
+                // CategoryType categoryType = categoryTypeRepository.findByCategoryTypeId(category.getCategoryTypeId());
 
-                return new HistoryResponseDTO(
-                    txnOne.getId(),
-                    txnOne.getUserId(),
-                    txnOne.getTransactionAmount(),
-                    txnOne.getTransactionCategoryId(),
-                    txnOne.getTransactionMessage(),
-                    txnOne.getTransactionDate().toString(),
-                    txnOne.getTransactionDateInt(),
-                    txnOne.getIsModify(),
-                    txnOne.getTransactionModificationCount(),
-                    categoryTypeId.toString(),
-                    category.getCategoryName(),
-                    categoryType.getCategoryTypeName()
-                          );
-                    }).collect(Collectors.toList());
+                     return new HistoryResponseDTO(
+                             txnOne.getId(),
+                             txnOne.getUserId(),
+                             txnOne.getTransactionAmount(),
+                             txnOne.getTransactionCategoryId(),
+                             txnOne.getTransactionMessage(),
+                             txnOne.getTransactionDate().toString(),
+                             txnOne.getTransactionDateInt(),
+                             txnOne.getIsModify(),
+                             txnOne.getTransactionModificationCount(),
+                             txnOne.getTransactionCategoryId().toString(),
+                             categoryIdNameMap.get(txnOne.getTransactionCategoryId()).getCategoryName(),
+                             categoryTypeIdNameMap
+                                     .get(categoryIdNameMap.get(txnOne.getTransactionCategoryId()).getCategoryTypeId())
+
+                     );
+                 }).collect(Collectors.toList());
             }
 
         } catch (Exception e) {
