@@ -31,10 +31,10 @@ public class HistoryService {
     @Autowired
     private CategoryTypeRepository categoryTypeRepository;
 
-    public Object getUserHistory(Integer userId,Integer date){
+    public Object getUserHistory(Integer userId,Integer startDate,Integer endDate){
     
         try {
-            List<Transaction> txn = transactionRepository.getTransactionHistory(userId, date);
+            List<Transaction> txn = transactionRepository.getTransactionHistory(userId, startDate, endDate);
             
             
 

@@ -19,9 +19,9 @@ public class HistoryController {
     
     @GetMapping("/get")
     public ResponseEntity<Object> getTransactionHistory(@RequestParam Integer userId,
-                                                @RequestParam Integer date){
+                                                @RequestParam Integer startDate,@RequestParam Integer endDate){
         try{
-           return new ResponseEntity<>(historyService.getUserHistory(userId,date),HttpStatus.OK);
+           return new ResponseEntity<>(historyService.getUserHistory(userId,startDate,endDate),HttpStatus.OK);
         }catch (Exception e){
            return new ResponseEntity<>(e.getLocalizedMessage(),HttpStatus.BAD_REQUEST);
         }
