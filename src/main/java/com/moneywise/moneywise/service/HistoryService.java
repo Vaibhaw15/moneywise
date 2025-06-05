@@ -1,5 +1,6 @@
 package com.moneywise.moneywise.service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -17,10 +18,8 @@ import com.moneywise.moneywise.repository.TransactionRepository;
 import com.moneywise.moneywise.entity.Category;
 import com.moneywise.moneywise.entity.CategoryType;
 
-
 @Service
 public class HistoryService {
-    
 
     @Autowired
     private TransactionRepository transactionRepository;
@@ -52,34 +51,41 @@ public class HistoryService {
 
                 // List<Integer> categoryTypeIds = categories.stream().map(Category::getCategoryTypeId).toList();
 
-                Map<Integer,String> categoryTypeIdNameMap =  categoryTypeRepository.findAll()
-                .stream().collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
+                Map<Integer, String> categoryTypeIdNameMap = categoryTypeRepository.findAll()
+                        .stream().collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
 
-                 return txn.stream().map(txnOne -> {
+                List<HistoryResponseDTO> responseList =  txn.stream().map(txnOne -> {
 
-                // Integer categoryTypeId = txnOne.getTransactionCategoryId();
-                 
-                // Category category = categoryRepository.findByCategoryTypeId(categoryTypeId);
+                    // Integer categoryTypeId = txnOne.getTransactionCategoryId();
 
-                // CategoryType categoryType = categoryTypeRepository.findByCategoryTypeId(category.getCategoryTypeId());
+                    // Category category = categoryRepository.findByCategoryTypeId(categoryTypeId);
 
-                     return new HistoryResponseDTO(
-                             txnOne.getId(),
-                             txnOne.getUserId(),
-                             txnOne.getTransactionAmount(),
-                             txnOne.getTransactionCategoryId(),
-                             txnOne.getTransactionMessage(),
-                             txnOne.getTransactionDate().toString(),
-                             txnOne.getTransactionDateInt(),
-                             txnOne.getIsModify(),
-                             txnOne.getTransactionModificationCount(),
-                             txnOne.getTransactionCategoryId().toString(),
-                             categoryIdNameMap.get(txnOne.getTransactionCategoryId()).getCategoryName(),
-                             categoryTypeIdNameMap
-                                     .get(categoryIdNameMap.get(txnOne.getTransactionCategoryId()).getCategoryTypeId())
+                    // CategoryType categoryType =
+                    // categoryTypeRepository.findByCategoryTypeId(category.getCategoryTypeId());
 
-                     );
-                 }).collect(Collectors.toList());
+                    return new HistoryResponseDTO(
+                            txnOne.getId(),
+                            txnOne.getUserId(),
+                            txnOne.getTransactionAmount(),
+                            txnOne.getTransactionCategoryId(),
+                            txnOne.getTransactionMessage(),
+                            txnOne.getTransactionDate().toString(),
+                            txnOne.getTransactionDateInt(),
+                            txnOne.getIsModify(),
+                            txnOne.getTransactionModificationCount(),
+                            txnOne.getTransactionCategoryId().toString(),
+                            categoryIdNameMap.get(txnOne.getTransactionCategoryId()).getCategoryName(),
+                            categoryTypeIdNameMap
+                                    .get(categoryIdNameMap.get(txnOne.getTransactionCategoryId()).getCategoryTypeId())
+
+                    );
+                }).collect(Collectors.toList());
+                responseList.sort(
+                    Comparator.comparing(HistoryResponseDTO::getTransactionDateInt).reversed()
+                        .thenComparing(HistoryResponseDTO::getId));
+
+
+                return responseList;
             }
 
         } catch (Exception e) {
