@@ -34,7 +34,7 @@ public class HistoryService {
     public Object getUserHistory(Integer userId,Integer startDate,Integer endDate){
     
         try {
-            List<Transaction> txn = transactionRepository.getTransactionHistory(userId, startDate, endDate);
+            List<Transaction> txn = transactionRepository.findByUserIdAndTransactionDateIntBetween(userId, startDate, endDate);
             
             
 
@@ -46,13 +46,13 @@ public class HistoryService {
 
                 //List<Category> categories = categoryRepository.findByCategoryTypeIdIn(categoryIds);
 
-                Map<Integer,Category> categoryIdNameMap = categoryRepository.findAll()
+                Map<String,Category> categoryIdNameMap = categoryRepository.findAll()
                 .stream().collect(Collectors.toMap(Category::getId, Function.identity()));
                 
 
                 // List<Integer> categoryTypeIds = categories.stream().map(Category::getCategoryTypeId).toList();
 
-                Map<Integer,String> categoryTypeIdNameMap =  categoryTypeRepository.findAll()
+                Map<String,String> categoryTypeIdNameMap =  categoryTypeRepository.findAll()
                 .stream().collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
 
                  return txn.stream().map(txnOne -> {
@@ -64,7 +64,7 @@ public class HistoryService {
                 // CategoryType categoryType = categoryTypeRepository.findByCategoryTypeId(category.getCategoryTypeId());
 
                      return new HistoryResponseDTO(
-                             txnOne.getId(),
+                             Integer.valueOf(txnOne.getId()),
                              txnOne.getUserId(),
                              txnOne.getTransactionAmount(),
                              txnOne.getTransactionCategoryId(),
@@ -73,10 +73,10 @@ public class HistoryService {
                              txnOne.getTransactionDateInt(),
                              txnOne.getIsModify(),
                              txnOne.getTransactionModificationCount(),
-                             txnOne.getTransactionCategoryId().toString(),
-                             categoryIdNameMap.get(txnOne.getTransactionCategoryId()).getCategoryName(),
+                             txnOne.getTransactionCategoryId().toString()
+                             categoryIdNameMap.get(String.valueOf(txnOne.getTransactionCategoryId())).getCategoryName(),
                              categoryTypeIdNameMap
-                                     .get(categoryIdNameMap.get(txnOne.getTransactionCategoryId()).getCategoryTypeId())
+                                     .get(categoryIdNameMap.get(String.valuetxnOne.getTransactionCategoryId()).getCategoryTypeId())
 
                      );
                  }).collect(Collectors.toList());
