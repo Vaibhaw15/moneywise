@@ -44,74 +44,67 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 500s # Increased overall SSH connection timeout to 8 minutes 20 seconds
-          command_timeout: 1200s # Increased timeout for commands run over SSH to 20 minutes
+          timeout: 600s # **Maxed out SSH connection timeout to 10 minutes**
+          command_timeout: 1800s # **Maxed out script execution timeout to 30 minutes**
           script: |
             echo "--- Starting EC2 Deployment Script ---"
+            echo "Current timestamp (start of script): $(date)"
 
             echo "✅ Checking Java version on EC2:"
-            # Verifies Java 21 is installed and in PATH. Exits if not.
             java -version || { echo "❌ Java not installed or not in PATH. Please install Java 21 on your EC2 instance. Exiting."; exit 1; }
 
             echo "Attempting to change directory to /home/ubuntu/app..."
-            # Changes to the deployment directory. Exits if not found or accessible.
             cd /home/ubuntu/app || { echo "❌ Directory /home/ubuntu/app not found or accessible. Please ensure it exists and has correct permissions. Exiting."; exit 1; }
             echo "Current working directory on EC2: $(pwd)"
 
             echo "🛑 Trying to stop existing app (if any)..."
-            # Finds PID of any running Java JAR application
             PID=$(pgrep -f 'java -jar')
             if [ -n "$PID" ]; then
-              echo "Found existing app with PID: $PID. Sending SIGTERM to stop it gracefully..."
+              echo "Found existing app with PID: $PID. Sending SIGTERM to stop it gracefully... Timestamp: $(date)"
               kill "$PID"
-              sleep 15 # **Increased sleep** for graceful shutdown (from 10s)
+              sleep 30 # **Maxed out sleep** for graceful shutdown (from 15s)
 
-              # Checks if process is still running after SIGTERM
               if pgrep -f 'java -jar' > /dev/null; then
-                echo "⚠️ Previous app still running after SIGTERM. Sending SIGKILL to force stop..."
-                kill -9 "$PID" # Forces termination if SIGTERM fails
-                sleep 10 # **Increased sleep** after forceful kill (from 5s)
+                echo "⚠️ Previous app still running after SIGTERM. Sending SIGKILL to force stop... Timestamp: $(date)"
+                kill -9 "$PID"
+                sleep 20 # **Maxed out sleep** after forceful kill (from 10s)
               fi
 
-              # Final check to ensure the process is truly gone
               if pgrep -f 'java -jar' > /dev/null; then
-                echo "❌ Error: Previous app (PID $PID) is *still* running after forceful kill. Manual intervention may be needed on EC2."
-                exit 1 # Fails the workflow if the old app persists
+                echo "❌ Error: Previous app (PID $PID) is *still* running after forceful kill. Manual intervention may be needed on EC2. Timestamp: $(date)"
+                exit 1
               else
-                echo "✅ Previous app stopped or forcibly killed."
+                echo "✅ Previous app stopped or forcibly killed. Timestamp: $(date)"
               fi
             else
-              echo "ℹ️ No previous app found running."
+              echo "ℹ️ No previous app found running. Timestamp: $(date)"
             fi
 
-            echo "📦 Listing all JARs in the deployment directory:"
-            # Lists JARs in the target directory. Exits if none found after SCP.
+            echo "📦 Listing all JARs in the deployment directory: Timestamp: $(date)"
             ls -lh *.jar || { echo '❌ No JARs found after SCP! Please verify the "Upload JAR to EC2" step and the target path.'; exit 1; }
 
-            echo "🔍 Finding the latest deployable JAR (excluding '-original')..."
-            # Identifies the most recent executable JAR file for deployment
+            echo "🔍 Finding the latest deployable JAR (excluding '-original')... Timestamp: $(date)"
             JAR_FILE=$(ls -t *.jar | grep -v 'original' | head -n 1)
 
             if [ -z "$JAR_FILE" ]; then
-              echo "❌ No deployable JAR file found in /home/ubuntu/app/. This might mean the build failed or the SCP did not transfer correctly."
+              echo "❌ No deployable JAR file found in /home/ubuntu/app/. This might mean the build failed or the SCP did not transfer correctly. Timestamp: $(date)"
               exit 1
             fi
 
-            echo "📌 Using JAR file for deployment: $JAR_FILE"
-            echo "🚀 Starting application in background using nohup..."
-            # Starts the new Spring Boot application in the background, redirecting logs
+            echo "📌 Using JAR file for deployment: $JAR_FILE. Timestamp: $(date)"
+            echo "🚀 Starting application in background using nohup... Timestamp: $(date)"
             nohup java -jar "$JAR_FILE" > app.log 2>&1 &
 
-            echo "Waiting 45 seconds for the application to start up and generate logs..."
-            sleep 45 # **Increased sleep** for new application startup (from 30s)
+            echo "Waiting 90 seconds for the application to start up and generate logs... Timestamp: $(date)"
+            sleep 90 # **Maxed out sleep** for new application startup (from 45s)
 
-            echo "📄 Displaying last 50 lines of app.log for status check:"
-            # Displays the latest log entries for immediate feedback
+            echo "📄 Displaying last 50 lines of app.log for status check: Timestamp: $(date)"
             if [ -f app.log ]; then
-              tail -n 50 app.log || echo "❌ Could not read app.log (possible permissions issue or log file is empty)."
+              tail -n 50 app.log || echo "❌ Could not read app.log (possible permissions issue or log file is empty). Timestamp: $(date)"
             else
-              echo "❌ app.log not found. The application might not have started correctly or logging is misconfigured."
+              echo "❌ app.log not found. The application might not have started correctly or logging is misconfigured. Timestamp: $(date)"
             fi
 
-            echo "✅ Deployment script completed. Please SSH into your EC2 instance and check 'tail -f app.log' for ongoing status."
+            echo "✅ Deployment script completed. Please SSH into your EC2 instance and check 'tail -f app.log' for ongoing status. Timestamp: $(date)"
             echo "--- EC2 Deployment Script Finished ---"
+            echo "Final timestamp (end of script): $(date)"
