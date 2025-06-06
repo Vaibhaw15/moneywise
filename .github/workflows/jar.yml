@@ -47,6 +47,15 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            # Kill any existing app
             pkill -f 'java -jar' || true
-            nohup java -jar /home/ubuntu/app/*.jar > /home/ubuntu/app/app.log 2>&1 &
-            echo "Spring Boot app restarted on EC2"
+
+            # Ensure `at` command is available
+            if ! command -v at &> /dev/null; then
+              sudo apt update && sudo apt install at -y
+            fi
+
+            # Schedule the app to run in background
+            echo "cd /home/ubuntu/app && java -jar *.jar > app.log 2>&1 &" | at now + 1 minute
+
+            echo "Spring Boot app scheduled to restart in 1 minute"
