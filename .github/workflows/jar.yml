@@ -22,13 +22,6 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
           
-      - name: Cache Maven dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-          
       - name: Build with Maven
         run: mvn clean package -DskipTests
         
@@ -36,43 +29,7 @@ jobs:
         run: |
           echo "Checking for JAR files..."
           ls -la target/*.jar
-          echo "JAR file details:"
-          file target/*.jar
           
-      - name: Archive JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: springboot-jar
-          path: target/*.jar
-          
-      - name: Stop existing application on EC2
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 60s
-          command_timeout: 30s
-          script: |
-            echo "Stopping existing Spring Boot application..."
-            pkill -f 'java' || true
-            sleep 2
-            echo "Cleanup completed"
-            
-      - name: Prepare deployment directory on EC2
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 60s
-          command_timeout: 30s
-          script: |
-            echo "Preparing deployment directory..."
-            mkdir -p /home/ubuntu/app
-            rm -f /home/ubuntu/app/*.jar
-            echo "Directory preparation completed"
-            
       - name: Copy JAR to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -84,54 +41,18 @@ jobs:
           target: "/home/ubuntu/app/"
           strip_components: 1
           
-      - name: Verify JAR file on EC2
+      - name: Deploy and Start Application
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 60s
-          command_timeout: 30s
+          timeout: 120s
+          command_timeout: 90s
           script: |
-            echo "Verifying JAR file on EC2..."
             cd /home/ubuntu/app
-            ls -la *.jar
-            chmod +x *.jar
-            echo "JAR file verification completed"
-            
-      - name: Start Spring Boot application on EC2
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 60s
-          command_timeout: 2m
-          script: |
             echo "Starting Spring Boot application..."
-            cd /home/ubuntu/app
             nohup java -jar *.jar > app.log 2>&1 &
-            sleep 3
-            echo "Spring Boot application started"
-            ps aux | grep java | grep -v grep || echo "No Java processes found"
-            
-      - name: Health check
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 60s
-          command_timeout: 1m
-          script: |
-            echo "Performing health check..."
-            sleep 10
-            
-            # Check if Java process is running
-            if ps aux | grep java | grep -v grep > /dev/null; then
-              echo "✅ Java process is running"
-            else
-              echo "❌ Java process not found"
-              echo "Application logs:"
-              tail -20 /home/ubuntu/app/app.log 2>/dev/null || echo "No log file found"
-            fi
+            sleep 5
+            echo "Application deployment completed"
+            echo "Check logs with: tail -f /home/ubuntu/app/app.log"
