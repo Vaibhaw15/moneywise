@@ -3,10 +3,10 @@ name: Build and Deploy Spring Boot JAR to EC2
 on:
   push:
     branches:
-      - master
+      - new_1
   pull_request:
     branches:
-      - master
+      - new_1
 
 jobs:
   build-and-deploy:
@@ -25,7 +25,7 @@ jobs:
       - name: 🔨 Build with Maven
         run: mvn clean package -DskipTests
 
-      - name: 📦 Get the exact JAR file name
+      - name: 📦 Get exact JAR file name
         id: get-jar
         run: |
           JAR_NAME=$(ls target/*.jar | grep -v 'original' | head -n 1)
@@ -51,17 +51,32 @@ jobs:
           timeout: 120s
           command_timeout: 90s
           script: |
-            cd /home/ubuntu/app
-            echo "Stopping existing app if running..."
+            echo "✅ Checking Java version on EC2:"
+            java -version || { echo "❌ Java is not installed!"; exit 1; }
+
+            cd /home/ubuntu/app || { echo "❌ App directory not found!"; exit 1; }
+
+            echo "🛑 Stopping existing app..."
             pkill -f 'java -jar' || true
 
-            echo "Finding latest JAR..."
-            JAR_FILE=$(ls -t *.jar | grep -v 'original' | head -n 1)
-            echo "Using JAR: $JAR_FILE"
+            echo "📦 Listing all JARs:"
+            ls -lh *.jar
 
-            echo "Starting app..."
+            echo "🔍 Finding latest JAR..."
+            JAR_FILE=$(ls -t *.jar | grep -v 'original' | head -n 1)
+
+            if [ -z "$JAR_FILE" ]; then
+              echo "❌ No JAR file found in /home/ubuntu/app/"
+              exit 1
+            fi
+
+            echo "📌 Using JAR: $JAR_FILE"
+            echo "🚀 Starting application..."
             nohup java -jar "$JAR_FILE" > app.log 2>&1 &
 
             sleep 5
-            echo "App started. Check log output:"
+
+            echo "📄 Last 20 lines of app.log:"
             tail -n 20 app.log
+
+            echo "✅ Deployment script completed."
