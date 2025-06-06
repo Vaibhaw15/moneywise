@@ -52,8 +52,8 @@ jobs:
 
             cd /home/ubuntu/app || { echo "❌ /home/ubuntu/app not found"; exit 1; }
 
-            echo "🛑 Stopping existing app..."
-            pkill -f 'java -jar' || true
+            echo "🛑 Trying to stop existing app (if any)..."
+            pkill -f 'java -jar' && echo "✅ Previous app stopped." || echo "ℹ️ No app was running."
 
             echo "📦 Listing all JARs:"
             ls -lh *.jar || { echo '❌ No JARs found after SCP!'; exit 1; }
@@ -73,6 +73,6 @@ jobs:
             sleep 5
 
             echo "📄 Last 20 lines of app.log:"
-            tail -n 20 app.log
+            tail -n 20 app.log || echo "❌ Could not read app.log"
 
             echo "✅ Deployment script completed."
