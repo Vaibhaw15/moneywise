@@ -3,10 +3,10 @@ name: Build and Deploy Spring Boot JAR to EC2
 on:
   push:
     branches:
-      - new_1
+      - master
   pull_request:
     branches:
-      - new_1
+      - master
 
 jobs:
   build-and-deploy:
