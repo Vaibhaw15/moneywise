@@ -2,7 +2,6 @@ package com.moneywise.moneywise.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.moneywise.moneywise.entity.Category;
 import com.moneywise.moneywise.entity.CategoryType;
@@ -19,7 +18,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional
 public class LandingService {
 
     @Autowired

@@ -2,14 +2,12 @@ package com.moneywise.moneywise.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.moneywise.moneywise.entity.Transaction;
 import com.moneywise.moneywise.model.request.TransactionRequestDto;
 import com.moneywise.moneywise.repository.TransactionRepository;
 
 @Service
-@Transactional(rollbackFor = Exception.class)
 public class TransactionService {
 
     private static final String SUCCESS = "SUCCESS";
