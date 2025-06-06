@@ -3,86 +3,93 @@ name: Build and Deploy Spring Boot JAR to EC2
 on:
   push:
     branches:
-      - QA # Triggers on push to the 'QA' branch
+      - QA # Workflow triggers on push to the 'QA' branch
   pull_request:
     branches:
-      - QA # Triggers on PR to the 'QA' branch
+      - QA # Workflow triggers on pull requests targeting the 'QA' branch
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest # GitHub-hosted runner for the build process
+    runs-on: ubuntu-latest # Specifies the GitHub-hosted runner environment
 
     steps:
       - name: ✅ Checkout source code
-        uses: actions/checkout@v4 # Action to check out your repository code
+        uses: actions/checkout@v4 # Checks out your repository code
 
       - name: ☕ Set up JDK 21
-        uses: actions/setup-java@v4 # Action to set up Java Development Kit
+        uses: actions/setup-java@v4 # Installs Temurin OpenJDK 21
         with:
-          distribution: 'temurin' # Using Temurin distribution for OpenJDK
-          java-version: '21'      # Specifying Java 21
+          distribution: 'temurin'
+          java-version: '21'
 
       - name: 🔨 Build with Maven
         run: |
-          mvn clean package -DskipTests # Clean build and package, skipping tests for faster CI
+          mvn clean package -DskipTests # Builds your Spring Boot application, skipping tests
           echo "✅ Build done. Available JARs:"
-          ls -lh target/ # List generated JARs for verification
+          ls -lh target/ # Lists the generated JAR files
 
       - name: 📤 Upload JAR to EC2
-        uses: appleboy/scp-action@v0.1.7 # Action to securely copy files to EC2
-        with:
-          host: ${{ secrets.EC2_HOST }}      # EC2 hostname/IP from GitHub Secrets
-          username: ${{ secrets.EC2_USER }}  # EC2 SSH username from GitHub Secrets
-          key: ${{ secrets.EC2_SSH_KEY }}    # EC2 SSH private key from GitHub Secrets
-          source: "target/*.jar"             # Source JAR files from the build output
-          target: "/home/ubuntu/app/"        # Destination directory on EC2
-          debug: true # Enable debug logging for SCP action
-
-      - name: 🚀 Deploy on EC2 and Start App
-        uses: appleboy/ssh-action@v1.0.0 # Action to execute commands over SSH on EC2
+        uses: appleboy/scp-action@v0.1.7 # Securely copies the JAR to your EC2 instance
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 400s # Increased overall SSH connection timeout to 6 minutes 40 seconds
-          command_timeout: 900s # Increased timeout for commands run over SSH to 15 minutes (was 400s)
+          source: "target/*.jar"
+          target: "/home/ubuntu/app/"
+          debug: true # Enables verbose logging for SCP
+
+      - name: 🚀 Deploy on EC2 and Start App
+        uses: appleboy/ssh-action@v1.0.0 # Executes commands over SSH on EC2
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 500s # Increased overall SSH connection timeout to 8 minutes 20 seconds
+          command_timeout: 1200s # Increased timeout for commands run over SSH to 20 minutes
           script: |
             echo "--- Starting EC2 Deployment Script ---"
 
             echo "✅ Checking Java version on EC2:"
-            # Check if Java 21 is installed. Exit if not.
+            # Verifies Java 21 is installed and in PATH. Exits if not.
             java -version || { echo "❌ Java not installed or not in PATH. Please install Java 21 on your EC2 instance. Exiting."; exit 1; }
 
             echo "Attempting to change directory to /home/ubuntu/app..."
-            # Navigate to the deployment directory. Exit if not found/accessible.
+            # Changes to the deployment directory. Exits if not found or accessible.
             cd /home/ubuntu/app || { echo "❌ Directory /home/ubuntu/app not found or accessible. Please ensure it exists and has correct permissions. Exiting."; exit 1; }
             echo "Current working directory on EC2: $(pwd)"
 
             echo "🛑 Trying to stop existing app (if any)..."
-            # Find PID of any running Java JAR application
+            # Finds PID of any running Java JAR application
             PID=$(pgrep -f 'java -jar')
             if [ -n "$PID" ]; then
               echo "Found existing app with PID: $PID. Sending SIGTERM to stop it gracefully..."
               kill "$PID"
-              sleep 10 # Give the old process time to shut down gracefully (increased from 5s)
-              
-              # Check if process is still running after SIGTERM
+              sleep 15 # **Increased sleep** for graceful shutdown (from 10s)
+
+              # Checks if process is still running after SIGTERM
               if pgrep -f 'java -jar' > /dev/null; then
                 echo "⚠️ Previous app still running after SIGTERM. Sending SIGKILL to force stop..."
-                kill -9 "$PID"
-                sleep 5 # Give it a moment to be forcibly killed (increased from 2s)
+                kill -9 "$PID" # Forces termination if SIGTERM fails
+                sleep 10 # **Increased sleep** after forceful kill (from 5s)
               fi
-              echo "✅ Previous app stopped or forcibly killed."
+
+              # Final check to ensure the process is truly gone
+              if pgrep -f 'java -jar' > /dev/null; then
+                echo "❌ Error: Previous app (PID $PID) is *still* running after forceful kill. Manual intervention may be needed on EC2."
+                exit 1 # Fails the workflow if the old app persists
+              else
+                echo "✅ Previous app stopped or forcibly killed."
+              fi
             else
               echo "ℹ️ No previous app found running."
             fi
 
             echo "📦 Listing all JARs in the deployment directory:"
-            # List JARs in the target directory. Exit if none found.
+            # Lists JARs in the target directory. Exits if none found after SCP.
             ls -lh *.jar || { echo '❌ No JARs found after SCP! Please verify the "Upload JAR to EC2" step and the target path.'; exit 1; }
 
             echo "🔍 Finding the latest deployable JAR (excluding '-original')..."
-            # Use 'ls -t' to get newest first, filter out '-original' JARs, and take the first one.
+            # Identifies the most recent executable JAR file for deployment
             JAR_FILE=$(ls -t *.jar | grep -v 'original' | head -n 1)
 
             if [ -z "$JAR_FILE" ]; then
@@ -92,15 +99,14 @@ jobs:
 
             echo "📌 Using JAR file for deployment: $JAR_FILE"
             echo "🚀 Starting application in background using nohup..."
-            # Run the JAR in the background using nohup to detach it from the SSH session.
-            # Redirect stdout and stderr to app.log for persistent logging.
+            # Starts the new Spring Boot application in the background, redirecting logs
             nohup java -jar "$JAR_FILE" > app.log 2>&1 &
 
-            echo "Waiting 30 seconds for the application to start up and generate logs..."
-            sleep 30 # Increased sleep to allow for more application startup time (was 15s)
+            echo "Waiting 45 seconds for the application to start up and generate logs..."
+            sleep 45 # **Increased sleep** for new application startup (from 30s)
 
             echo "📄 Displaying last 50 lines of app.log for status check:"
-            # Check if app.log exists and display its last 50 lines.
+            # Displays the latest log entries for immediate feedback
             if [ -f app.log ]; then
               tail -n 50 app.log || echo "❌ Could not read app.log (possible permissions issue or log file is empty)."
             else
