@@ -44,8 +44,8 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 300s # Increased overall SSH connection timeout
-          command_timeout: 720s # Increased timeout for commands run over SSH
+          timeout: 400s # Increased overall SSH connection timeout
+          command_timeout: 900s # Increased timeout for commands run over SSH
           script: |
             echo "--- Starting EC2 Deployment Script ---"
 
