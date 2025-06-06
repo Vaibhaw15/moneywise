@@ -39,8 +39,9 @@ jobs:
           path: target/*.jar
 
       - name: Submit dependency graph
-        uses: github/dependency-submission-action@v1
+        uses: github/dependency-submission-action@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+
 
 
