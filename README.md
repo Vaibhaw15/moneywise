@@ -15,7 +15,7 @@ Moneywise is a Spring Boot-based web application that helps users manage their i
 - ⚙️ Health check with Spring Boot Actuator
 - 🌐 CORS and CSRF configured
 
----
+----
 
 ## 🛠️ Tech Stack
 
