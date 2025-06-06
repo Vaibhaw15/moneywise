@@ -22,10 +22,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
           cache: maven
 
@@ -38,6 +38,9 @@ jobs:
           name: springboot-jar
           path: target/*.jar
 
-      - name: Update dependency graph
-        uses: advanced-security/maven-dependency-submission-action@v4
+      - name: Submit dependency graph
+        uses: github/dependency-submission-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
 
