@@ -25,10 +25,10 @@ jobs:
       - name: 🔨 Build with Maven
         run: |
           mvn clean package -DskipTests
-          echo "✅ Build complete. Available JARs:"
+          echo "✅ Build done. Available JARs:"
           ls -lh target/
 
-      - name: 📤 Copy JAR to EC2
+      - name: 📤 Upload JAR to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -36,8 +36,9 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "target/*.jar"
           target: "/home/ubuntu/app/"
+          debug: true
 
-      - name: 🚀 Deploy and Start Spring Boot App
+      - name: 🚀 Deploy on EC2 and Start App
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -47,15 +48,15 @@ jobs:
           command_timeout: 90s
           script: |
             echo "✅ Checking Java version on EC2:"
-            java -version || { echo "❌ Java is not installed!"; exit 1; }
+            java -version || { echo "❌ Java not installed"; exit 1; }
 
-            cd /home/ubuntu/app || { echo "❌ App directory not found!"; exit 1; }
+            cd /home/ubuntu/app || { echo "❌ /home/ubuntu/app not found"; exit 1; }
 
             echo "🛑 Stopping existing app..."
             pkill -f 'java -jar' || true
 
             echo "📦 Listing all JARs:"
-            ls -lh *.jar
+            ls -lh *.jar || { echo '❌ No JARs found after SCP!'; exit 1; }
 
             echo "🔍 Finding latest JAR..."
             JAR_FILE=$(ls -t *.jar | grep -v 'original' | head -n 1)
