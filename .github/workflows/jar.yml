@@ -1,0 +1,154 @@
+name: Build and Deploy Spring Boot JAR to EC2
+
+on:
+  push:
+    branches:
+      - new_1
+  pull_request:
+    branches:
+      - new_1
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+        
+      - name: Verify JAR file exists
+        run: |
+          echo "Checking for JAR files..."
+          ls -la target/*.jar
+          
+      - name: Stop existing application (if running)
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 30s
+          script: |
+            echo "Stopping existing application..."
+            # Stop by port (most reliable)
+            sudo fuser -k 8080/tcp 2>/dev/null || echo "No process on port 8080"
+            # Stop Java processes as backup
+            pkill -f 'java.*jar' 2>/dev/null || echo "No Java processes found"
+            sleep 3
+            echo "Cleanup completed"
+            
+      - name: Prepare deployment directory
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 30s
+          command_timeout: 15s
+          script: |
+            echo "Preparing deployment directory..."
+            mkdir -p /home/ubuntu/app
+            cd /home/ubuntu/app
+            # Backup current JAR if exists
+            if [ -f *.jar ]; then
+              mv *.jar backup-$(date +%Y%m%d-%H%M%S).jar 2>/dev/null || rm -f *.jar
+            fi
+            echo "Directory prepared"
+          
+      - name: Copy JAR to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 60s
+          source: "target/*.jar"
+          target: "/home/ubuntu/app/"
+          strip_components: 1
+          
+      - name: Deploy and Start Application
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 120s
+          command_timeout: 90s
+          script: |
+            cd /home/ubuntu/app
+            echo "Starting Spring Boot application..."
+            
+            # Start application with nohup and save PID
+            nohup java -jar *.jar > app.log 2>&1 &
+            APP_PID=$!
+            echo $APP_PID > app.pid
+            
+            echo "Application started with PID: $APP_PID"
+            sleep 5
+            
+            # Verify application is running
+            if kill -0 $APP_PID 2>/dev/null; then
+              echo "✅ Application is running successfully!"
+              echo "Process ID: $APP_PID"
+            else
+              echo "❌ Application failed to start"
+              echo "Last 10 lines of log:"
+              tail -10 app.log 2>/dev/null || echo "No log file found"
+              exit 1
+            fi
+            
+            echo "Application deployment completed"
+            echo "Check logs with: tail -f /home/ubuntu/app/app.log"
+            
+      - name: Health Check
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 45s
+          script: |
+            echo "Performing health check..."
+            sleep 10
+            
+            # Check if process is still alive
+            if [ -f /home/ubuntu/app/app.pid ]; then
+              PID=$(cat /home/ubuntu/app/app.pid)
+              if kill -0 $PID 2>/dev/null; then
+                echo "✅ Process $PID is still running"
+                
+                # Check if application is responding
+                for i in 1 2 3 4 5; do
+                  if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
+                    echo "✅ Application is responding on port 8080!"
+                    echo "🎉 Deployment successful!"
+                    exit 0
+                  fi
+                  echo "Waiting for application to respond... ($i/5)"
+                  sleep 10
+                done
+                
+                echo "⚠️  Application is running but not responding on port 8080 yet"
+                echo "This might be normal for large applications that take time to start"
+                echo "Monitor with: curl http://your-ec2-ip:8080"
+              else
+                echo "❌ Application process died"
+                echo "Application logs:"
+                tail -20 /home/ubuntu/app/app.log 2>/dev/null || echo "No log file found"
+                exit 1
+              fi
+            else
+              echo "❌ PID file not found"
+              exit 1
+            fi
