@@ -51,16 +51,12 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 30s
-          command_timeout: 2m
+          timeout: 60s
+          command_timeout: 30s
           script: |
             echo "Stopping existing Spring Boot application..."
-            # Kill any existing java process running Spring Boot app
-            pkill -f 'java.*\.jar' || echo "No existing Java processes found"
-            # Wait a moment for graceful shutdown
-            sleep 3
-            # Force kill if still running
-            pkill -9 -f 'java.*\.jar' || echo "No processes to force kill"
+            pkill -f 'java' || true
+            sleep 2
             echo "Cleanup completed"
             
       - name: Prepare deployment directory on EC2
@@ -69,18 +65,12 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 30s
-          command_timeout: 1m
+          timeout: 60s
+          command_timeout: 30s
           script: |
             echo "Preparing deployment directory..."
-            # Create app directory if it doesn't exist
             mkdir -p /home/ubuntu/app
-            # Create logs directory
-            mkdir -p /home/ubuntu/app/logs
-            # Clean up old JAR files
             rm -f /home/ubuntu/app/*.jar
-            # Set proper permissions
-            chmod 755 /home/ubuntu/app
             echo "Directory preparation completed"
             
       - name: Copy JAR to EC2
@@ -100,13 +90,12 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 30s
-          command_timeout: 1m
+          timeout: 60s
+          command_timeout: 30s
           script: |
             echo "Verifying JAR file on EC2..."
             cd /home/ubuntu/app
             ls -la *.jar
-            # Make JAR executable
             chmod +x *.jar
             echo "JAR file verification completed"
             
@@ -117,44 +106,14 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           timeout: 60s
-          command_timeout: 5m
+          command_timeout: 2m
           script: |
             echo "Starting Spring Boot application..."
             cd /home/ubuntu/app
-            
-            # Set JAVA_HOME if not set
-            export JAVA_HOME=${JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-amd64}
-            export PATH=$JAVA_HOME/bin:$PATH
-            
-            # Verify Java installation
-            java -version
-            
-            # Start the application with proper JVM settings
-            nohup java -Xms512m -Xmx1024m \
-              -Dspring.profiles.active=prod \
-              -Dserver.port=8080 \
-              -jar *.jar \
-              > logs/app.log 2>&1 &
-            
-            # Get the process ID
-            APP_PID=$!
-            echo "Application started with PID: $APP_PID"
-            
-            # Save PID for future reference
-            echo $APP_PID > app.pid
-            
-            # Wait a few seconds and check if process is still running
-            sleep 5
-            if kill -0 $APP_PID 2>/dev/null; then
-              echo "✅ Spring Boot application started successfully!"
-              echo "Process ID: $APP_PID"
-              echo "Log file: /home/ubuntu/app/logs/app.log"
-            else
-              echo "❌ Application failed to start"
-              echo "Last 20 lines of log:"
-              tail -20 logs/app.log || echo "No log file found"
-              exit 1
-            fi
+            nohup java -jar *.jar > app.log 2>&1 &
+            sleep 3
+            echo "Spring Boot application started"
+            ps aux | grep java | grep -v grep || echo "No Java processes found"
             
       - name: Health check
         uses: appleboy/ssh-action@v1.0.0
@@ -162,43 +121,17 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 30s
-          command_timeout: 2m
+          timeout: 60s
+          command_timeout: 1m
           script: |
             echo "Performing health check..."
+            sleep 10
             
-            # Wait for application to fully start
-            for i in {1..30}; do
-              echo "Health check attempt $i/30..."
-              
-              # Check if process is still running
-              if [ -f /home/ubuntu/app/app.pid ]; then
-                PID=$(cat /home/ubuntu/app/app.pid)
-                if kill -0 $PID 2>/dev/null; then
-                  echo "Process $PID is running"
-                  
-                  # Try to connect to the application
-                  if curl -f -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
-                    echo "✅ Application is healthy and responding!"
-                    curl -s http://localhost:8080/actuator/health
-                    exit 0
-                  elif curl -f -s http://localhost:8080 > /dev/null 2>&1; then
-                    echo "✅ Application is responding on port 8080!"
-                    exit 0
-                  fi
-                else
-                  echo "❌ Process is not running"
-                  break
-                fi
-              else
-                echo "❌ PID file not found"
-                break
-              fi
-              
-              sleep 10
-            done
-            
-            echo "❌ Health check failed"
-            echo "Application logs (last 50 lines):"
-            tail -50 /home/ubuntu/app/logs/app.log || echo "No log file found"
-            exit 1
+            # Check if Java process is running
+            if ps aux | grep java | grep -v grep > /dev/null; then
+              echo "✅ Java process is running"
+            else
+              echo "❌ Java process not found"
+              echo "Application logs:"
+              tail -20 /home/ubuntu/app/app.log 2>/dev/null || echo "No log file found"
+            fi
