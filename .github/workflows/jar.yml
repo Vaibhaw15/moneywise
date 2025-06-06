@@ -11,52 +11,194 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v3
-
+        uses: actions/checkout@v4
+        
       - name: Set up JDK 21
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
-
+          
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+          
       - name: Build with Maven
         run: mvn clean package -DskipTests
-
+        
+      - name: Verify JAR file exists
+        run: |
+          echo "Checking for JAR files..."
+          ls -la target/*.jar
+          echo "JAR file details:"
+          file target/*.jar
+          
       - name: Archive JAR
         uses: actions/upload-artifact@v4
         with:
           name: springboot-jar
           path: target/*.jar
-
-      - name: Copy JAR to EC2
-        uses: appleboy/scp-action@v0.1.5
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "target/*.jar"
-          target: "/home/ubuntu/app/"
-
-      - name: Run JAR on EC2
+          
+      - name: Stop existing application on EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 30s
+          command_timeout: 2m
           script: |
+            echo "Stopping existing Spring Boot application..."
             # Kill any existing java process running Spring Boot app
-            pkill -f 'java -jar' || true
-
-            # Change directory to app folder
+            pkill -f 'java.*\.jar' || echo "No existing Java processes found"
+            # Wait a moment for graceful shutdown
+            sleep 3
+            # Force kill if still running
+            pkill -9 -f 'java.*\.jar' || echo "No processes to force kill"
+            echo "Cleanup completed"
+            
+      - name: Prepare deployment directory on EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 30s
+          command_timeout: 1m
+          script: |
+            echo "Preparing deployment directory..."
+            # Create app directory if it doesn't exist
+            mkdir -p /home/ubuntu/app
+            # Create logs directory
+            mkdir -p /home/ubuntu/app/logs
+            # Clean up old JAR files
+            rm -f /home/ubuntu/app/*.jar
+            # Set proper permissions
+            chmod 755 /home/ubuntu/app
+            echo "Directory preparation completed"
+            
+      - name: Copy JAR to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 60s
+          source: "target/*.jar"
+          target: "/home/ubuntu/app/"
+          strip_components: 1
+          
+      - name: Verify JAR file on EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 30s
+          command_timeout: 1m
+          script: |
+            echo "Verifying JAR file on EC2..."
             cd /home/ubuntu/app
-
-            # Start the app in background, redirect logs, detach from terminal
-            nohup java -jar *.jar > app.log 2>&1 < /dev/null &
-
-            # Disown the background process so it stays running after SSH ends
-            disown
-
-            echo "Spring Boot app started successfully"
+            ls -la *.jar
+            # Make JAR executable
+            chmod +x *.jar
+            echo "JAR file verification completed"
+            
+      - name: Start Spring Boot application on EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 5m
+          script: |
+            echo "Starting Spring Boot application..."
+            cd /home/ubuntu/app
+            
+            # Set JAVA_HOME if not set
+            export JAVA_HOME=${JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-amd64}
+            export PATH=$JAVA_HOME/bin:$PATH
+            
+            # Verify Java installation
+            java -version
+            
+            # Start the application with proper JVM settings
+            nohup java -Xms512m -Xmx1024m \
+              -Dspring.profiles.active=prod \
+              -Dserver.port=8080 \
+              -jar *.jar \
+              > logs/app.log 2>&1 &
+            
+            # Get the process ID
+            APP_PID=$!
+            echo "Application started with PID: $APP_PID"
+            
+            # Save PID for future reference
+            echo $APP_PID > app.pid
+            
+            # Wait a few seconds and check if process is still running
+            sleep 5
+            if kill -0 $APP_PID 2>/dev/null; then
+              echo "✅ Spring Boot application started successfully!"
+              echo "Process ID: $APP_PID"
+              echo "Log file: /home/ubuntu/app/logs/app.log"
+            else
+              echo "❌ Application failed to start"
+              echo "Last 20 lines of log:"
+              tail -20 logs/app.log || echo "No log file found"
+              exit 1
+            fi
+            
+      - name: Health check
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 30s
+          command_timeout: 2m
+          script: |
+            echo "Performing health check..."
+            
+            # Wait for application to fully start
+            for i in {1..30}; do
+              echo "Health check attempt $i/30..."
+              
+              # Check if process is still running
+              if [ -f /home/ubuntu/app/app.pid ]; then
+                PID=$(cat /home/ubuntu/app/app.pid)
+                if kill -0 $PID 2>/dev/null; then
+                  echo "Process $PID is running"
+                  
+                  # Try to connect to the application
+                  if curl -f -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
+                    echo "✅ Application is healthy and responding!"
+                    curl -s http://localhost:8080/actuator/health
+                    exit 0
+                  elif curl -f -s http://localhost:8080 > /dev/null 2>&1; then
+                    echo "✅ Application is responding on port 8080!"
+                    exit 0
+                  fi
+                else
+                  echo "❌ Process is not running"
+                  break
+                fi
+              else
+                echo "❌ PID file not found"
+                break
+              fi
+              
+              sleep 10
+            done
+            
+            echo "❌ Health check failed"
+            echo "Application logs (last 50 lines):"
+            tail -50 /home/ubuntu/app/logs/app.log || echo "No log file found"
+            exit 1
