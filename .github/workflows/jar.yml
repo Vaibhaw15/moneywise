@@ -23,14 +23,10 @@ jobs:
           java-version: '21'
 
       - name: 🔨 Build with Maven
-        run: mvn clean package -DskipTests
-
-      - name: 📦 Get exact JAR file name
-        id: get-jar
         run: |
-          JAR_NAME=$(ls target/*.jar | grep -v 'original' | head -n 1)
-          echo "JAR_NAME=$JAR_NAME" >> $GITHUB_ENV
-          echo "Found JAR: $JAR_NAME"
+          mvn clean package -DskipTests
+          echo "✅ Build complete. Available JARs:"
+          ls -lh target/
 
       - name: 📤 Copy JAR to EC2
         uses: appleboy/scp-action@v0.1.7
@@ -38,8 +34,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 60s
-          source: "${{ env.JAR_NAME }}"
+          source: "target/*.jar"
           target: "/home/ubuntu/app/"
 
       - name: 🚀 Deploy and Start Spring Boot App
