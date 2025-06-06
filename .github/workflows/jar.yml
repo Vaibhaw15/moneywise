@@ -36,7 +36,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "target/*.jar"
           target: "/home/ubuntu/app/"
-          debug: true
+          debug: true # Set to true for more verbose SCP logs
 
       - name: 🚀 Deploy on EC2 and Start App
         uses: appleboy/ssh-action@v1.0.0
@@ -44,35 +44,62 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 120s
-          command_timeout: 90s
+          timeout: 180s # Increased overall SSH connection timeout
+          command_timeout: 400s # Increased timeout for commands run over SSH
           script: |
-            echo "✅ Checking Java version on EC2:"
-            java -version || { echo "❌ Java not installed"; exit 1; }
+            echo "--- Starting EC2 Deployment Script ---"
 
-            cd /home/ubuntu/app || { echo "❌ /home/ubuntu/app not found"; exit 1; }
+            echo "✅ Checking Java version on EC2:"
+            java -version || { echo "❌ Java not installed or not in PATH. Please install Java 21 on your EC2 instance. Exiting."; exit 1; }
+
+            echo "Attempting to change directory to /home/ubuntu/app..."
+            cd /home/ubuntu/app || { echo "❌ Directory /home/ubuntu/app not found or accessible. Please ensure it exists and has correct permissions. Exiting."; exit 1; }
+            echo "Current working directory on EC2: $(pwd)"
 
             echo "🛑 Trying to stop existing app (if any)..."
-            pkill -f 'java -jar' && echo "✅ Previous app stopped." || echo "ℹ️ No app was running."
+            # Find PID of any running Java JAR application
+            PID=$(pgrep -f 'java -jar')
+            if [ -n "$PID" ]; then
+              echo "Found existing app with PID: $PID. Sending SIGTERM to stop it..."
+              kill "$PID"
+              sleep 5 # Give the old process time to shut down gracefully
+              # Check if process is still running after kill
+              if pgrep -f 'java -jar' > /dev/null; then
+                echo "⚠️ Previous app still running after SIGTERM. Sending SIGKILL..."
+                kill -9 "$PID"
+                sleep 2
+              fi
+              echo "✅ Previous app stopped or forcibly killed."
+            else
+              echo "ℹ️ No previous app found running."
+            fi
 
-            echo "📦 Listing all JARs:"
-            ls -lh *.jar || { echo '❌ No JARs found after SCP!'; exit 1; }
+            echo "📦 Listing all JARs in the deployment directory:"
+            ls -lh *.jar || { echo '❌ No JARs found after SCP! Please verify the "Upload JAR to EC2" step and the target path.'; exit 1; }
 
-            echo "🔍 Finding latest JAR..."
+            echo "🔍 Finding the latest deployable JAR (excluding '-original')..."
+            # Use 'head -n 1' to get only the first (most recent) matching JAR
             JAR_FILE=$(ls -t *.jar | grep -v 'original' | head -n 1)
 
             if [ -z "$JAR_FILE" ]; then
-              echo "❌ No JAR file found in /home/ubuntu/app/"
+              echo "❌ No deployable JAR file found in /home/ubuntu/app/. This might mean the build failed or the SCP did not transfer correctly."
               exit 1
             fi
 
-            echo "📌 Using JAR: $JAR_FILE"
-            echo "🚀 Starting application..."
+            echo "📌 Using JAR file for deployment: $JAR_FILE"
+            echo "🚀 Starting application in background using nohup..."
+            # Run the JAR in the background, redirecting stdout/stderr to app.log
             nohup java -jar "$JAR_FILE" > app.log 2>&1 &
 
-            sleep 5
+            echo "Waiting 15 seconds for the application to start up and generate logs..."
+            sleep 15 # Increased sleep to allow for more application startup time
 
-            echo "📄 Last 20 lines of app.log:"
-            tail -n 20 app.log || echo "❌ Could not read app.log"
+            echo "📄 Displaying last 50 lines of app.log for status check:"
+            if [ -f app.log ]; then
+              tail -n 50 app.log || echo "❌ Could not read app.log (possible permissions issue or log file is empty)."
+            else
+              echo "❌ app.log not found. The application might not have started correctly or logging is misconfigured."
+            fi
 
-            echo "✅ Deployment script completed."
+            echo "✅ Deployment script completed. Please SSH into your EC2 instance and check 'tail -f app.log' for ongoing status."
+            echo "--- EC2 Deployment Script Finished ---"
