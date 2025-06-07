@@ -3,6 +3,7 @@ package com.moneywise.moneywise.service;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,16 +40,21 @@ public class HistoryService {
                 return "No transaction history found for userId: " + userId;
             } else {
 
-                Map<Integer, String> categoryIdNameMap = categoryRepository.findAll()
-                        .stream().collect(Collectors.toMap(Category::getId, Category::getCategoryName));
+                Map<Integer, Category> categoryIdNameMap = categoryRepository.findAll()
+                        .stream().collect(Collectors.toMap(Category::getId, Function.identity()));
 
                 Map<Integer, String> categoryTypeIdNameMap = categoryTypeRepository.findAll()
                         .stream().collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
               
                 List<HistoryResponseDTO> responseList = txn.stream().map(txnOne -> {
 
-                    String categoryName = categoryIdNameMap.getOrDefault(txnOne.getTransactionCategoryId(),"Unknown Category");;
-                    String categoryTypeName =  categoryTypeIdNameMap.getOrDefault(txnOne.getTransactionCategoryId(), "Unknown Type");
+                    Category category = categoryIdNameMap.get(txnOne.getTransactionCategoryId());
+                    String categoryName =  "Unknow Category";
+                    String categoryTypeName =  "Unknown Type";
+                    if(category!=null){
+                        categoryName =  category.getCategoryName();
+                        categoryTypeName = categoryTypeIdNameMap.get(category.getCategoryTypeId());
+                    }
 
                     return new HistoryResponseDTO(
                             txnOne.getId(),
@@ -60,9 +66,9 @@ public class HistoryService {
                             txnOne.getTransactionDateInt(),
                             txnOne.getIsModify(),
                             txnOne.getTransactionModificationCount(),
-                            txnOne.getTransactionCategoryId(),
-                            categoryName, // Now potentially null
-                            categoryTypeName // Now potentially null
+                            category!=null ? category.getCategoryTypeId():0,
+                            categoryName, 
+                            categoryTypeName 
                     );
                 }).collect(Collectors.toList());
                responseList.sort(
