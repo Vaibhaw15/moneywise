@@ -46,8 +46,10 @@ public class LandingService {
         Integer startOfLastMonth = Integer.parseInt(lastMonth.atDay(1).format(yyyymmddFormatter));
         Integer endOfLastMonth = Integer.parseInt(lastMonth.atEndOfMonth().format(yyyymmddFormatter));
 
-        List<Transaction> currentTransactions = txnRepo.findByUserIdAndTransactionDateIntBetween(userId, startDateInt, endDateInt);
-        List<Transaction> lastMonthTransactions = txnRepo.findByUserIdAndTransactionDateIntBetween(userId, startOfLastMonth,
+        List<Transaction> currentTransactions = txnRepo.findByUserIdAndTransactionDateIntBetween(userId, startDateInt,
+                endDateInt);
+        List<Transaction> lastMonthTransactions = txnRepo.findByUserIdAndTransactionDateIntBetween(userId,
+                startOfLastMonth,
                 endOfLastMonth);
 
         Map<Integer, Category> categoryIdMap = categoryRepo.findAll()
@@ -57,7 +59,6 @@ public class LandingService {
                 .stream()
 
                 .collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
-
 
         Integer income = currentTransactions.stream()
                 .filter(t -> {
@@ -78,12 +79,12 @@ public class LandingService {
                     String type = categoryTypeIdNameMap.get(category.getCategoryTypeId());
                     return "Expenses".equalsIgnoreCase(type);
                 })
-                .mapToInt(t -> t.getTransactionAmount()) 
+                .mapToInt(Transaction::getTransactionAmount)
                 .sum();
 
-        Integer currentBalance = income - expense;
+        Integer currentBalance = income - expense; 
 
-        // ✅ Last Month's Income and Expense
+        // Last Month Income and Expense
         Integer lastIncome = lastMonthTransactions.stream()
                 .filter(t -> {
                     Category category = categoryIdMap.get(t.getTransactionCategoryId());
@@ -103,13 +104,25 @@ public class LandingService {
                     String type = categoryTypeIdNameMap.get(category.getCategoryTypeId());
                     return "Expenses".equalsIgnoreCase(type);
                 })
-                .mapToInt(t -> t.getTransactionAmount())
+                .mapToInt(Transaction::getTransactionAmount)
                 .sum();
 
-        Integer lastBalance = lastIncome - lastExpense;
+        Integer lastBalance = lastIncome - lastExpense; // same here
+
+        // Calculate difference and percentage
         Integer compareBalance = currentBalance - lastBalance;
 
-        double comparePercentage = lastBalance == 0 ? 100.0 : (compareBalance * 100.0 / lastBalance);
+        double comparePercentage;
+
+        // Handle zero and negative cases safely
+        if (lastBalance == 0) {
+            comparePercentage = 100.0;
+        } else if (lastBalance < 0 && currentBalance > 0) {
+            // Recovering from negative to positive — treat denominator as absolute
+            comparePercentage = (compareBalance * 100.0) / Math.abs(lastBalance);
+        } else {
+            comparePercentage = (compareBalance * 100.0) / lastBalance;
+        }
 
         // ✅ Weekly Chart Data
         Map<String, Map<String, Integer>> weeklyMap = new LinkedHashMap<>();
