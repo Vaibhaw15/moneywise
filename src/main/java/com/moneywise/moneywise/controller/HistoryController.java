@@ -11,13 +11,13 @@ import org.springframework.web.bind.annotation.RestController;
 import com.moneywise.moneywise.service.HistoryService;
 
 @RestController
-@RequestMapping("/transaction-history")
+@RequestMapping("/transactionHistory")
 public class HistoryController {
     
     @Autowired
     private HistoryService historyService; 
     
-    @GetMapping("/get")
+    @GetMapping
     public ResponseEntity<Object> getTransactionHistory(@RequestParam Integer userId,
                                                 @RequestParam Integer startDate,
                                                 @RequestParam Integer endDate){

@@ -20,7 +20,7 @@ public class TransactionController {
     @Autowired
     private TransactionService txnService;
 
-    @PostMapping("/addEdit")
+    @PostMapping("/addEditTransaction")
     @ResponseBody
     public ResponseEntity<Object> addTxn(@RequestBody TransactionRequestDto txn){
 

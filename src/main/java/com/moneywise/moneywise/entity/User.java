@@ -1,11 +1,9 @@
 package com.moneywise.moneywise.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -17,23 +15,18 @@ import lombok.Setter;
 @AllArgsConstructor
 @Getter
 @Setter
-@Entity
 @EqualsAndHashCode
 @Builder
-@Table(name = "app_users")
+@Document(collection = "app_users")
 public class User {
     
+    public static final String SEQUENCE_NAME = "users_sequence";
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
     private Integer id;
 
-    @Column(name = "user_name", nullable = false)
     private String username;
 
-    @Column(name = "password", nullable = false)
     private String password;
 
-    @Column(name = "email", nullable = false)
     private String email;
 }

@@ -12,13 +12,13 @@ import com.moneywise.moneywise.service.AppCategoryService;
 
 
 @RestController
-@RequestMapping("/app-category")
+@RequestMapping("/category")
 public class AppCategory {
     
     @Autowired
     private AppCategoryService appCategoryService;
 
-    @GetMapping("/get")
+    @GetMapping
     public ResponseEntity<Object> getAllCategory(){
         try{
 

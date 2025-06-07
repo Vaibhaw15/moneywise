@@ -3,7 +3,6 @@ package com.moneywise.moneywise.service;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,38 +29,26 @@ public class HistoryService {
     @Autowired
     private CategoryTypeRepository categoryTypeRepository;
 
-    public Object getUserHistory(Integer userId,Integer startDate,Integer endDate){
-    
+    public Object getUserHistory(Integer userId, Integer startDate, Integer endDate) {
+
         try {
-            List<Transaction> txn = transactionRepository.getTransactionHistory(userId, startDate, endDate);
-            
-            
+            List<Transaction> txn = transactionRepository.findByUserIdAndTransactionDateIntBetween(userId, startDate,
+                    endDate);
 
             if (txn == null || txn.isEmpty()) {
                 return "No transaction history found for userId: " + userId;
-            }else{
+            } else {
 
-                //List<Integer> categoryIds = txn.stream().map(Transaction::getTransactionCategoryId).toList();
-
-                //List<Category> categories = categoryRepository.findByCategoryTypeIdIn(categoryIds);
-
-                Map<Integer,Category> categoryIdNameMap = categoryRepository.findAll()
-                .stream().collect(Collectors.toMap(Category::getId, Function.identity()));
-                
-
-                // List<Integer> categoryTypeIds = categories.stream().map(Category::getCategoryTypeId).toList();
+                Map<Integer, String> categoryIdNameMap = categoryRepository.findAll()
+                        .stream().collect(Collectors.toMap(Category::getId, Category::getCategoryName));
 
                 Map<Integer, String> categoryTypeIdNameMap = categoryTypeRepository.findAll()
                         .stream().collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
+              
+                List<HistoryResponseDTO> responseList = txn.stream().map(txnOne -> {
 
-                List<HistoryResponseDTO> responseList =  txn.stream().map(txnOne -> {
-
-                    // Integer categoryTypeId = txnOne.getTransactionCategoryId();
-
-                    // Category category = categoryRepository.findByCategoryTypeId(categoryTypeId);
-
-                    // CategoryType categoryType =
-                    // categoryTypeRepository.findByCategoryTypeId(category.getCategoryTypeId());
+                    String categoryName = categoryIdNameMap.getOrDefault(txnOne.getTransactionCategoryId(),"Unknown Category");;
+                    String categoryTypeName =  categoryTypeIdNameMap.getOrDefault(txnOne.getTransactionCategoryId(), "Unknown Type");
 
                     return new HistoryResponseDTO(
                             txnOne.getId(),
@@ -69,23 +56,19 @@ public class HistoryService {
                             txnOne.getTransactionAmount(),
                             txnOne.getTransactionCategoryId(),
                             txnOne.getTransactionMessage(),
-                            txnOne.getTransactionDate().toString(),
+                            txnOne.getTransactionDate(),
                             txnOne.getTransactionDateInt(),
                             txnOne.getIsModify(),
                             txnOne.getTransactionModificationCount(),
-                            txnOne.getTransactionCategoryId().toString(),
-                            categoryIdNameMap.get(txnOne.getTransactionCategoryId()).getCategoryName(),
-                            categoryTypeIdNameMap
-                                    .get(categoryIdNameMap.get(txnOne.getTransactionCategoryId()).getCategoryTypeId())
-
+                            txnOne.getTransactionCategoryId(),
+                            categoryName, // Now potentially null
+                            categoryTypeName // Now potentially null
                     );
                 }).collect(Collectors.toList());
-                responseList.sort(
+               responseList.sort(
                     Comparator.comparing(HistoryResponseDTO::getTransactionDateInt).reversed()
                         .thenComparing(HistoryResponseDTO::getId));
-
-
-                return responseList;
+              return responseList;
             }
 
         } catch (Exception e) {

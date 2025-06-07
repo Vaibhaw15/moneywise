@@ -1,11 +1,9 @@
 package com.moneywise.moneywise.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -18,17 +16,14 @@ import lombok.Setter;
 @Getter
 @Setter
 @EqualsAndHashCode
-@Entity
 @Builder
-@Table(name = "app_category_type")
+@Document(collection = "app_category_type")
 public class CategoryType {
     
+    public static final String SEQUENCE_NAME = "category_type_sequence";
+    
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id",nullable = false)
     private Integer id;
 
-
-    @Column(name = "category__type_name",nullable = false)
     private String categoryTypeName;
 }

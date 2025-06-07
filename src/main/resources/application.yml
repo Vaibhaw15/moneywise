@@ -1,0 +1,15 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb+srv://Vaibhaw15:vs155@cluster0.iu1xxrh.mongodb.net/moneywise?retryWrites=true&w=majority
+
+logging:
+  level:
+    'org.springframework.data.mongodb.core.MongoTemplate': INFO # Keep INFO for Spring Data MongoDB operations
+    'com.mongodb': WARN # Reduce verbosity for the core MongoDB driver
+    # You can be even more specific if you only want to silence cluster logs
+    'org.mongodb.driver.cluster': WARN
+    'org.mongodb.driver.client': WARN
+    # Keep Spring Boot's default INFO or higher, as needed
+    org.springframework: INFO
+    root: INFO # Default log level for everything else
