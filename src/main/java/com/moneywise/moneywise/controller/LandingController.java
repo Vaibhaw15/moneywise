@@ -19,7 +19,8 @@ public class LandingController {
     
     @GetMapping
     public ResponseEntity<Object> getDashboard(@RequestParam Integer userId,
-                                                @RequestParam String startDate,@RequestParam String endDate){
+                                                @RequestParam String startDate,
+                                                @RequestParam String endDate){
         try{
            return new ResponseEntity<>(landingService.getUserMonthlyStats(userId,startDate,endDate),HttpStatus.OK);
         }catch (Exception e){

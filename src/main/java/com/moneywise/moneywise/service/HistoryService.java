@@ -2,7 +2,6 @@ package com.moneywise.moneywise.service;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,26 +38,18 @@ public class HistoryService {
                 return "No transaction history found for userId: " + userId;
             } else {
 
-                Map<Integer, Category> categoryIdNameMap = categoryRepository.findAll()
-                        .stream().collect(Collectors.toMap(Category::getId, Function.identity()));
+                Map<Integer, String> categoryIdNameMap = categoryRepository.findAll()
+                        .stream().collect(Collectors.toMap(Category::getId, Category::getCategoryName));
 
                 Map<Integer, String> categoryTypeIdNameMap = categoryTypeRepository.findAll()
                         .stream().collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
 
                 return txn.stream().map(txnOne -> {
 
-                    Category category = categoryIdNameMap.get(txnOne.getTransactionCategoryId());
-                    String categoryName = null;
-                    String categoryTypeName = null;
+                    String categoryName = categoryIdNameMap.getOrDefault(txnOne.getTransactionCategoryId(),"Unknown Category");;
+                    String categoryTypeName =  categoryTypeIdNameMap.getOrDefault(txnOne.getTransactionCategoryId(), "Unknown Type");
 
-                    // Perform lookups only if the category was found
-                    if (category != null) {
-                        // Get the category name
-                        categoryName = category.getCategoryName();
-                        if (category.getCategoryTypeId() != null) {
-                            categoryTypeName = categoryTypeIdNameMap.get(category.getCategoryTypeId());
-                        }
-                    }
+
 
                     return new HistoryResponseDTO(
                             txnOne.getId(),

@@ -79,7 +79,7 @@ public class UserService implements UserDetailsService{
         return Map.of("userId",userData.get().getId().toString(),
                       "userName",userData.get().getUsername().toString(),
                       "userEmail",userData.get().getEmail().toString(),
-                      "token",jwtUtil.generateToken(userData.get().getUsername(),claims));
+                      "token",jwtUtil.generateToken(userData.get().getEmail(),claims));
     }
 
     @Override
@@ -88,7 +88,7 @@ public class UserService implements UserDetailsService{
         User user = userRepo.findByEmail(username).orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
         return org.springframework.security.core.userdetails.User.builder()
-        .username(user.getUsername())
+        .username(user.getEmail())
         .password(user.getPassword())
         .roles("USER")
         .build();
