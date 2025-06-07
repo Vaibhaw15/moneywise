@@ -45,7 +45,7 @@ public class HistoryService {
                 Map<Integer, String> categoryTypeIdNameMap = categoryTypeRepository.findAll()
                         .stream().collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
               
-                return txn.stream().map(txnOne -> {
+                List<HistoryResponseDTO> responseList = txn.stream().map(txnOne -> {
 
                     String categoryName = categoryIdNameMap.getOrDefault(txnOne.getTransactionCategoryId(),"Unknown Category");;
                     String categoryTypeName =  categoryTypeIdNameMap.getOrDefault(txnOne.getTransactionCategoryId(), "Unknown Type");
