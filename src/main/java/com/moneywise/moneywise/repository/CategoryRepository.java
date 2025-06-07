@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import com.moneywise.moneywise.entity.Category;
 
 @Repository
-public interface CategoryRepository extends MongoRepository<Category, String> {
+public interface CategoryRepository extends MongoRepository<Category, Integer> {
 
     Category findByCategoryTypeId(Integer categoryTypeId);
 

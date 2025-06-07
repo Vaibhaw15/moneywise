@@ -20,8 +20,9 @@ import lombok.Setter;
 @Document(collection = "app_users")
 public class User {
     
+    public static final String SEQUENCE_NAME = "users_sequence";
     @Id
-    private String id;
+    private Integer id;
 
     private String username;
 

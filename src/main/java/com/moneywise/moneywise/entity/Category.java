@@ -18,10 +18,11 @@ import lombok.Setter;
 @Builder
 @Document(collection  = "app_category")
 public class Category {
-    
+
+    public static final String SEQUENCE_NAME = "category_sequence";
 
     @Id
-    private String id;
+    private Integer id;
 
     private String categoryName;
 

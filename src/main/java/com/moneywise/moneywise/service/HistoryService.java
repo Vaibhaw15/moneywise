@@ -17,10 +17,8 @@ import com.moneywise.moneywise.repository.TransactionRepository;
 import com.moneywise.moneywise.entity.Category;
 import com.moneywise.moneywise.entity.CategoryType;
 
-
 @Service
 public class HistoryService {
-    
 
     @Autowired
     private TransactionRepository transactionRepository;
@@ -31,55 +29,52 @@ public class HistoryService {
     @Autowired
     private CategoryTypeRepository categoryTypeRepository;
 
-    public Object getUserHistory(Integer userId,Integer startDate,Integer endDate){
-    
+    public Object getUserHistory(Integer userId, Integer startDate, Integer endDate) {
+
         try {
-            List<Transaction> txn = transactionRepository.findByUserIdAndTransactionDateIntBetween(userId, startDate, endDate);
-            
-            
+            List<Transaction> txn = transactionRepository.findByUserIdAndTransactionDateIntBetween(userId, startDate,
+                    endDate);
 
             if (txn == null || txn.isEmpty()) {
                 return "No transaction history found for userId: " + userId;
-            }else{
+            } else {
 
-                //List<Integer> categoryIds = txn.stream().map(Transaction::getTransactionCategoryId).toList();
+                Map<Integer, Category> categoryIdNameMap = categoryRepository.findAll()
+                        .stream().collect(Collectors.toMap(Category::getId, Function.identity()));
 
-                //List<Category> categories = categoryRepository.findByCategoryTypeIdIn(categoryIds);
+                Map<Integer, String> categoryTypeIdNameMap = categoryTypeRepository.findAll()
+                        .stream().collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
 
-                Map<String,Category> categoryIdNameMap = categoryRepository.findAll()
-                .stream().collect(Collectors.toMap(Category::getId, Function.identity()));
-                
+                return txn.stream().map(txnOne -> {
 
-                // List<Integer> categoryTypeIds = categories.stream().map(Category::getCategoryTypeId).toList();
+                    Category category = categoryIdNameMap.get(txnOne.getTransactionCategoryId());
+                    String categoryName = null;
+                    String categoryTypeName = null;
 
-                Map<String,String> categoryTypeIdNameMap =  categoryTypeRepository.findAll()
-                .stream().collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
+                    // Perform lookups only if the category was found
+                    if (category != null) {
+                        // Get the category name
+                        categoryName = category.getCategoryName();
+                        if (category.getCategoryTypeId() != null) {
+                            categoryTypeName = categoryTypeIdNameMap.get(category.getCategoryTypeId());
+                        }
+                    }
 
-                 return txn.stream().map(txnOne -> {
-
-                // Integer categoryTypeId = txnOne.getTransactionCategoryId();
-                 
-                // Category category = categoryRepository.findByCategoryTypeId(categoryTypeId);
-
-                // CategoryType categoryType = categoryTypeRepository.findByCategoryTypeId(category.getCategoryTypeId());
-
-                     return new HistoryResponseDTO(
-                             Integer.valueOf(txnOne.getId()),
-                             txnOne.getUserId(),
-                             txnOne.getTransactionAmount(),
-                             txnOne.getTransactionCategoryId(),
-                             txnOne.getTransactionMessage(),
-                             txnOne.getTransactionDate().toString(),
-                             txnOne.getTransactionDateInt(),
-                             txnOne.getIsModify(),
-                             txnOne.getTransactionModificationCount(),
-                             txnOne.getTransactionCategoryId().toString()
-                             categoryIdNameMap.get(String.valueOf(txnOne.getTransactionCategoryId())).getCategoryName(),
-                             categoryTypeIdNameMap
-                                     .get(categoryIdNameMap.get(String.valuetxnOne.getTransactionCategoryId()).getCategoryTypeId())
-
-                     );
-                 }).collect(Collectors.toList());
+                    return new HistoryResponseDTO(
+                            txnOne.getId(),
+                            txnOne.getUserId(),
+                            txnOne.getTransactionAmount(),
+                            txnOne.getTransactionCategoryId(),
+                            txnOne.getTransactionMessage(),
+                            txnOne.getTransactionDate(),
+                            txnOne.getTransactionDateInt(),
+                            txnOne.getIsModify(),
+                            txnOne.getTransactionModificationCount(),
+                            txnOne.getTransactionCategoryId(),
+                            categoryName, // Now potentially null
+                            categoryTypeName // Now potentially null
+                    );
+                }).collect(Collectors.toList());
             }
 
         } catch (Exception e) {

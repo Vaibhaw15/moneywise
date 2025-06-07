@@ -21,13 +21,13 @@ import java.util.stream.Collectors;
 public class LandingService {
 
     @Autowired
-    private TransactionRepository repository;
+    private TransactionRepository txnRepo;
 
     @Autowired
-    private CategoryRepository categoryRepository;
+    private CategoryRepository categoryRepo;
 
     @Autowired
-    private CategoryTypeRepository categoryTypeRepository;
+    private CategoryTypeRepository categoryTypeRepo;
 
     private final DateTimeFormatter yyyymmddFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
 
@@ -46,15 +46,17 @@ public class LandingService {
         Integer startOfLastMonth = Integer.parseInt(lastMonth.atDay(1).format(yyyymmddFormatter));
         Integer endOfLastMonth = Integer.parseInt(lastMonth.atEndOfMonth().format(yyyymmddFormatter));
 
-        List<Transaction> currentTransactions = repository.getTransactionHistory(userId, startDateInt, endDateInt);
-        List<Transaction> lastMonthTransactions = repository.getTransactionHistory(userId, startOfLastMonth,
+        List<Transaction> currentTransactions = txnRepo.findByUserIdAndTransactionDateIntBetween(userId, startDateInt, endDateInt);
+        List<Transaction> lastMonthTransactions = txnRepo.findByUserIdAndTransactionDateIntBetween(userId, startOfLastMonth,
                 endOfLastMonth);
 
-        Map<Integer, Category> categoryIdMap = categoryRepository.findAll()
+        Map<Integer, Category> categoryIdMap = categoryRepo.findAll()
                 .stream().collect(Collectors.toMap(Category::getId, Function.identity()));
 
-        Map<Integer, String> categoryTypeIdNameMap = categoryTypeRepository.findAll()
-                .stream().collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
+        Map<Integer, String> categoryTypeIdNameMap = categoryTypeRepo.findAll()
+                .stream()
+
+                .collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
 
 
         Integer income = currentTransactions.stream()

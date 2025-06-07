@@ -10,7 +10,7 @@ import com.moneywise.moneywise.entity.Transaction;
 
 
 @Repository
-public interface TransactionRepository extends MongoRepository<Transaction, String> {
+public interface TransactionRepository extends MongoRepository<Transaction, Integer> {
 
     List<Transaction> findByUserIdAndTransactionDateIntBetween(Integer userId, Integer startDate, Integer endDate);
 }

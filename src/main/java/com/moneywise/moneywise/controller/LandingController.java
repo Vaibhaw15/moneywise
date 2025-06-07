@@ -11,14 +11,14 @@ import org.springframework.web.bind.annotation.RestController;
 import com.moneywise.moneywise.service.LandingService;
 
 @RestController
-@RequestMapping("/landing")
+@RequestMapping("/dashboard")
 public class LandingController {
     
     @Autowired
     private LandingService landingService; 
     
-    @GetMapping("/get")
-    public ResponseEntity<Object> getLandingData(@RequestParam Integer userId,
+    @GetMapping
+    public ResponseEntity<Object> getDashboard(@RequestParam Integer userId,
                                                 @RequestParam String startDate,@RequestParam String endDate){
         try{
            return new ResponseEntity<>(landingService.getUserMonthlyStats(userId,startDate,endDate),HttpStatus.OK);

@@ -8,10 +8,9 @@ import com.moneywise.moneywise.entity.User;
 
 
 @Repository
-public interface UserRepository extends MongoRepository<User,String>{
+public interface UserRepository extends MongoRepository<User,Integer>{
 
-    User findByEmail(String emailId);
-    Optional<User> findByUsername(String userName);
+    Optional<User> findByEmail(String emailId);
     
 }
 

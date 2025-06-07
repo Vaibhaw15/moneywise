@@ -19,7 +19,7 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 public class HistoryResponseDTO {
-    private String id;
+    private Integer id;
     private Integer userId;
     private Integer transactionAmount;
     private Integer transactionCategoryId;
@@ -28,7 +28,7 @@ public class HistoryResponseDTO {
     private Integer transactionDateInt;
     private Integer isModify;
     private Integer transactionModificationCount;
-    private String categoryType;
+    private Integer categoryType;
     private String categoryName;
     private String categoryTypeName;
 

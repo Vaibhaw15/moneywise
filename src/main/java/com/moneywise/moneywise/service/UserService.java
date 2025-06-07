@@ -1,7 +1,6 @@
 package com.moneywise.moneywise.service;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,8 +37,8 @@ public class UserService implements UserDetailsService{
         String password = Optional.ofNullable(user.getPassword()).orElseThrow(() -> new Exception("Password is not present"));
 
 
-        User existingUser = userRepo.findByEmail(email);
-        if(Objects.nonNull(existingUser)){
+        Optional<User> existingUser = userRepo.findByEmail(email);
+        if(existingUser.isPresent()){
             throw new InvalidUserException("User Email Already Exists");
         }
 
@@ -62,10 +61,12 @@ public class UserService implements UserDetailsService{
         String email = Optional.ofNullable(user.getEmail()).orElseThrow(() -> new Exception("Email is not present"));
         String password = Optional.ofNullable(user.getPassword()).orElseThrow(() -> new Exception("Password is not present"));
         
-        User userData = userRepo.findByEmail(email);
-        if(Objects.isNull(userData)) throw new InvalidUserException("User Not Found!!");
+        Optional<User> userData = userRepo.findByEmail(email);
+        if(userData.isEmpty()) {
+            throw new InvalidUserException("User Not Found!!");
+        }
 
-        if(!passwordEncoder.matches(password,userData.getPassword()))
+        if(!passwordEncoder.matches(password,userData.get().getPassword()))
         {
             throw new InvalidUserException("Invalid Password");
         } 
@@ -73,18 +74,18 @@ public class UserService implements UserDetailsService{
         
         // if(!userData.getPassword().equals(password)) throw new InvalidUserException("Invalid Password");
         Map<String,Object> claims = new HashMap<>();
-        claims.put("email", userData.getEmail());
+        claims.put("email", userData.get().getEmail());
         
-        return Map.of("userId",userData.getId().toString(),
-                      "userName",userData.getUsername().toString(),
-                      "userEmail",userData.getEmail().toString(),
-                      "token",jwtUtil.generateToken(userData.getUsername(),claims));
+        return Map.of("userId",userData.get().getId().toString(),
+                      "userName",userData.get().getUsername().toString(),
+                      "userEmail",userData.get().getEmail().toString(),
+                      "token",jwtUtil.generateToken(userData.get().getUsername(),claims));
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         
-        User user = userRepo.findByUsername(username).orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+        User user = userRepo.findByEmail(username).orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
         return org.springframework.security.core.userdetails.User.builder()
         .username(user.getUsername())

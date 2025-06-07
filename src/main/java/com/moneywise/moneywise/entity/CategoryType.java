@@ -20,9 +20,10 @@ import lombok.Setter;
 @Document(collection = "app_category_type")
 public class CategoryType {
     
+    public static final String SEQUENCE_NAME = "category_type_sequence";
+    
     @Id
-    private String id;
-
+    private Integer id;
 
     private String categoryTypeName;
 }
