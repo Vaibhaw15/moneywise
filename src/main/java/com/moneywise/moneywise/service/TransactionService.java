@@ -10,12 +10,14 @@ import com.moneywise.moneywise.repository.TransactionRepository;
 @Service
 public class TransactionService {
 
+
+    private static final String SUCCESS = "SUCCESS";
+    
     @Autowired
     private TransactionRepository transactionRepository;
 
-    public String addTransaction(TransactionRequestDto txn) {
-        String response = "SUCCESS";
-        try {
+    public String addTransaction(TransactionRequestDto txn){
+        try{
             Transaction transaction = Transaction.builder()
                     .transactionAmount(txn.getTxnAmount())
                     .transactionCategoryId(txn.getTxnCategoryId())
@@ -24,13 +26,15 @@ public class TransactionService {
                     .transactionMessage(txn.getTxnMessage())
                     .userId(txn.getUserId())
                     .id(txn.getId())
-                    .isModify(txn.getIsModify()).transactionModificationCount(txn.getModifyCount()).build();
+                    .isModify(txn.getIsModify())
+                    .transactionModificationCount(txn.getModifyCount())
+                    .build();
 
             transactionRepository.save(transaction);
-        } catch (Exception e) {
-            response = "Error Occurred while saving transaction";
+        } catch(Exception e){
+            return "Error Occurred while saving transaction";
         }
 
-        return response;
+        return SUCCESS;
     }
 }

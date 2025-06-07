@@ -1,5 +1,6 @@
 package com.moneywise.moneywise.service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -43,13 +44,11 @@ public class HistoryService {
 
                 Map<Integer, String> categoryTypeIdNameMap = categoryTypeRepository.findAll()
                         .stream().collect(Collectors.toMap(CategoryType::getId, CategoryType::getCategoryTypeName));
-
-                return txn.stream().map(txnOne -> {
+              
+                List<HistoryResponseDTO> responseList = txn.stream().map(txnOne -> {
 
                     String categoryName = categoryIdNameMap.getOrDefault(txnOne.getTransactionCategoryId(),"Unknown Category");;
                     String categoryTypeName =  categoryTypeIdNameMap.getOrDefault(txnOne.getTransactionCategoryId(), "Unknown Type");
-
-
 
                     return new HistoryResponseDTO(
                             txnOne.getId(),
@@ -66,6 +65,10 @@ public class HistoryService {
                             categoryTypeName // Now potentially null
                     );
                 }).collect(Collectors.toList());
+               responseList.sort(
+                    Comparator.comparing(HistoryResponseDTO::getTransactionDateInt).reversed()
+                        .thenComparing(HistoryResponseDTO::getId));
+              return responseList;
             }
 
         } catch (Exception e) {
