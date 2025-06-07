@@ -78,10 +78,10 @@ public class LandingService {
                     String type = categoryTypeIdNameMap.get(category.getCategoryTypeId());
                     return "Expenses".equalsIgnoreCase(type);
                 })
-                .mapToInt(t -> -t.getTransactionAmount()) 
+                .mapToInt(t -> t.getTransactionAmount()) 
                 .sum();
 
-        Integer currentBalance = income + expense;
+        Integer currentBalance = income - expense;
 
         // ✅ Last Month's Income and Expense
         Integer lastIncome = lastMonthTransactions.stream()
@@ -103,7 +103,7 @@ public class LandingService {
                     String type = categoryTypeIdNameMap.get(category.getCategoryTypeId());
                     return "Expenses".equalsIgnoreCase(type);
                 })
-                .mapToInt(t -> -t.getTransactionAmount())
+                .mapToInt(t -> t.getTransactionAmount())
                 .sum();
 
         Integer lastBalance = lastIncome - lastExpense;
