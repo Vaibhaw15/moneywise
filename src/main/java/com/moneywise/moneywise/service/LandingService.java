@@ -116,7 +116,13 @@ public class LandingService {
 
         // Handle zero and negative cases safely
         if (lastBalance == 0) {
-            comparePercentage = 100.0;
+           if (currentBalance == 0) {
+                    comparePercentage = 0.0;
+                } else if (currentBalance > 0) {
+                    comparePercentage = 100.0;
+                } else {
+                    comparePercentage = -100.0; 
+                }
         } else if (lastBalance < 0 && currentBalance > 0) {
             // Recovering from negative to positive — treat denominator as absolute
             comparePercentage = (compareBalance * 100.0) / Math.abs(lastBalance);
