@@ -157,3 +157,16 @@ Handles adding/editing transactions, transaction history logs, and landing page 
     ]
   }
   ```
+
+---
+
+## 4. Observability & Tracing
+
+This architecture implements **Distributed Tracing** via Micrometer and Zipkin to track requests across multiple microservices.
+
+### How to View Traces
+1. **Trace IDs in Logs:** When you run the microservices, every log statement in your console will automatically include a Trace ID (e.g., `[category-service, 6a5b4c3d, 1a2b3c]`).
+2. **Zipkin Dashboard:** We run a Zipkin server in Docker on port `9411`.
+   - Open your browser to `http://localhost:9411`.
+   - You can search for specific Trace IDs (found in your IntelliJ console) or filter by service name.
+   - Zipkin will visualize the entire lifecycle of the request, showing exactly how many milliseconds it spent in the API Gateway, Transaction Service, Category Service, etc.

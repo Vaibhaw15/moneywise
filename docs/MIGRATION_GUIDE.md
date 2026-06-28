@@ -639,8 +639,12 @@ Since this is now a multi-module Maven project, you can manage all services dire
    - Open the **Services** tool window (`View > Tool Windows > Services` or `Alt+8` / `Cmd+8`).
    - Click the `+` button -> `Run Configuration Type` -> select `Spring Boot`.
    - IntelliJ will automatically detect the 5 `@SpringBootApplication` main classes and list them.
-3. **Start the Database:**
-   - You must still run the PostgreSQL database locally. You can use the provided Docker Compose file just for the DB: `docker compose up -d postgres`
+3. **Start the Infrastructure (Database & Tracing):**
+   - You must still run the PostgreSQL database and Zipkin server locally. You can use the provided Docker Compose file to spin up just these services:
+     ```bash
+     docker compose up -d postgres zipkin
+     ```
+   - > **⚠️ IMPORTANT:** Do **NOT** just run `docker compose up` without specifying the service names. If you do, Docker will attempt to build and run all 5 Java microservices in the background. This will cause **Port Conflicts** (e.g., "Port 8080 is already in use") when you try to run the Java code natively in IntelliJ.
 4. **Boot Order (Crucial):**
    - **First:** Start `ServiceDiscoveryApplication` (Wait for it to fully initialize and show "Started Eureka Server").
    - **Second:** Start `ApiGatewayApplication`.
