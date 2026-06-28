@@ -1,0 +1,39 @@
+package com.moneywise.transaction.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.moneywise.transaction.entity.Transaction;
+import com.moneywise.transaction.model.request.TransactionRequestDto;
+import com.moneywise.transaction.repository.TransactionRepository;
+
+@Service
+public class TransactionService {
+
+    private static final String SUCCESS = "SUCCESS";
+    
+    @Autowired
+    private TransactionRepository transactionRepository;
+
+    public String addTransaction(TransactionRequestDto txn){
+        try{
+            Transaction transaction = Transaction.builder()
+                    .transactionAmount(txn.getTxnAmount())
+                    .transactionCategoryId(txn.getTxnCategoryId())
+                    .transactionDate(txn.getTxnDate())
+                    .transactionDateInt(txn.getTxnDateInt())
+                    .transactionMessage(txn.getTxnMessage())
+                    .userId(txn.getUserId())
+                    .id(txn.getId())
+                    .isModify(txn.getIsModify())
+                    .transactionModificationCount(txn.getModifyCount())
+                    .build();
+
+            transactionRepository.save(transaction);
+        } catch(Exception e){
+            return "Error Occurred while saving transaction";
+        }
+
+        return SUCCESS;
+    }
+}
