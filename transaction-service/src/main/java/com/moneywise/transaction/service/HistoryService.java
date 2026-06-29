@@ -53,12 +53,11 @@ public class HistoryService {
 
                 List<HistoryResponseDTO> responseList =  txn.stream().map(txnOne -> {
 
-                    // Integer categoryTypeId = txnOne.getTransactionCategoryId();
-
-                    // Category category = categoryRepository.findByCategoryTypeId(categoryTypeId);
-
-                    // CategoryType categoryType =
-                    // categoryTypeRepository.findByCategoryTypeId(category.getCategoryTypeId());
+                    CategoryDTO category = categoryIdNameMap.get(txnOne.getTransactionCategoryId());
+                    String categoryName = category != null ? category.getCategoryName() : "Unknown";
+                    String categoryTypeName = (category != null)
+                            ? categoryTypeIdNameMap.getOrDefault(category.getCategoryTypeId(), "Unknown")
+                            : "Unknown";
 
                     return new HistoryResponseDTO(
                             txnOne.getId(),
@@ -71,9 +70,8 @@ public class HistoryService {
                             txnOne.getIsModify(),
                             txnOne.getTransactionModificationCount(),
                             txnOne.getTransactionCategoryId().toString(),
-                            categoryIdNameMap.get(txnOne.getTransactionCategoryId()).getCategoryName(),
-                            categoryTypeIdNameMap
-                                    .get(categoryIdNameMap.get(txnOne.getTransactionCategoryId()).getCategoryTypeId())
+                            categoryName,
+                            categoryTypeName
 
                     );
                 }).collect(Collectors.toList());

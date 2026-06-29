@@ -170,3 +170,24 @@ This architecture implements **Distributed Tracing** via Micrometer and Zipkin t
    - Open your browser to `http://localhost:9411`.
    - You can search for specific Trace IDs (found in your IntelliJ console) or filter by service name.
    - Zipkin will visualize the entire lifecycle of the request, showing exactly how many milliseconds it spent in the API Gateway, Transaction Service, Category Service, etc.
+
+---
+
+## 5. Circuit Breaker (Resilience4j)
+
+This architecture implements **Circuit Breakers** to prevent cascading failures when a downstream service is unavailable.
+
+### Where it's applied
+1. **Transaction Service → Category Service (Feign):** If category-service is down, the Feign client returns empty lists as a fallback instead of crashing.
+2. **API Gateway → All Routes:** If any downstream service is unreachable, the gateway returns a clean `503 Service Unavailable` JSON response.
+
+### Fallback Behavior
+| Scenario | Without Circuit Breaker | With Circuit Breaker |
+|----------|------------------------|---------------------|
+| Category Service down, hit Landing API | ❌ 500 Internal Server Error | ✅ Returns zeroed-out stats (income: 0, expense: 0) |
+| Transaction Service down, hit via Gateway | ❌ Gateway hangs / 500 error | ✅ Returns `{"error": "Transaction Service is temporarily unavailable"}` |
+
+### Configuration
+- **Failure Threshold:** Circuit opens after 50% of the last 10 calls fail.
+- **Recovery Wait:** 10 seconds before the circuit tries again.
+- **Full documentation:** See `docs/CIRCUIT_BREAKER.md` for details.

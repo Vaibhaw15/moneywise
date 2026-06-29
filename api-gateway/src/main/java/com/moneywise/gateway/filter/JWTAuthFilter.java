@@ -19,7 +19,7 @@ public class JWTAuthFilter implements GlobalFilter, Ordered {
     private JWTUtil jwtUtil;
 
     // Endpoints that do NOT require authentication
-    private final List<String> openEndpoints = List.of("/api/v1/auth", "/actuator");
+    private final List<String> openEndpoints = List.of("/api/v1/auth", "/actuator", "/fallback");
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {

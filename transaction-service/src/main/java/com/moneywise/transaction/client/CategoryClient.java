@@ -7,7 +7,7 @@ import com.moneywise.transaction.model.CategoryTypeDTO;
 
 import java.util.List;
 
-@FeignClient(name = "category-service", path = "/api/v1/category")
+@FeignClient(name = "category-service", path = "/api/v1/category", fallback = CategoryClientFallback.class)
 public interface CategoryClient {
 
     @GetMapping("/get")
